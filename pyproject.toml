@@ -15,9 +15,13 @@ pycryptodome = "^3.23.0"
 pytest = "^8.4.1"
 pytest-cov = "^6.2.1"
 
+
+[tool.poetry.group.lint.dependencies]
+mypy = "^1.17.1"
+flake8 = "^7.3.0"
+
 [tool.mypy]
 files = "src"
-warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 
