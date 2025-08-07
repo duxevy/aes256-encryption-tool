@@ -4,151 +4,170 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Protocol.KDF import PBKDF2
 
-# Константы
-SALT_SIZE = 16
-KEY_SIZE = 32  # 256 бит
-ITERATIONS = 100_000
-BLOCK_SIZE = AES.block_size
 
-
-def derive_key(password: str, salt: bytes) -> bytes:
+class AES256Encryptor:
     """
-    Генерирует криптографический ключ из пароля и соли с использованием PBKDF2
+    Класс для шифрования и расшифрования данных с использованием AES-256 в режиме CBC.
 
-    Функция применяет алгоритм PBKDF2 (Password-Based Key Derivation Function 2)
-    для преобразования пароля и соли в бинарный ключ заданной длины.
-
-    Аргументы:
-        password (str): Пароль в виде строки
-        salt (bytes): Бинарные данные соли для увеличения энтропии
-
-    Возвращает:
-        bytes: Произведённый криптографический ключ длиной KEY_SIZE байт
-
-    Константы:
-        Использует глобальные параметры: KEY_SIZE (длина ключа) и ITERATIONS
-        (количество итераций хеширования)
+    Атрибуты:
+        SALT_SIZE (int): Размер соли в байтах
+        KEY_SIZE (int): Размер ключа в байтах (256 бит)
+        ITERATIONS (int): Количество итераций для PBKDF2
+        BLOCK_SIZE (int): Размер блока AES
     """
-    return PBKDF2(password, salt, dkLen=KEY_SIZE, count=ITERATIONS)
 
+    SALT_SIZE = 16
+    KEY_SIZE = 32  # 256 бит
+    ITERATIONS = 100_000
+    BLOCK_SIZE = AES.block_size
 
-def pad(data: bytes) -> bytes:
-    """
-    Добавляет заполнение (padding) к данным для достижения длины, кратной BLOCK_SIZE
+    def __init__(self):
+        """Инициализация объекта шифрования."""
+        pass
 
-    Функция вычисляет необходимую длину заполнения и добавляет её к исходным данным.
-    Значение каждого байта заполнения равно длине самого заполнения.
+    @staticmethod
+    def _derive_key(password: str, salt: bytes) -> bytes:
+        """
+        Генерирует криптографический ключ из пароля и соли с использованием PBKDF2
 
-    Аргументы:
-        data (bytes): Входные данные, к которым нужно добавить заполнение
+        Функция применяет алгоритм PBKDF2 (Password-Based Key Derivation Function 2)
+        для преобразования пароля и соли в бинарный ключ заданной длины.
 
-    Возвращает:
-        bytes: Данные с добавленным заполнением, общая длина которых кратна BLOCK_SIZE
+        Аргументы:
+            password (str): Пароль в виде строки
+            salt (bytes): Бинарные данные соли для увеличения энтропии
 
-    Константы:
-        Использует глобальную константу BLOCK_SIZE (размер блока в байтах)
+        Возвращает:
+            bytes: Произведённый криптографический ключ длиной KEY_SIZE байт
 
-    Пример:
-        Если BLOCK_SIZE = 16 и длина data = 14, результат будет data + b'\x02\x02'
-    """
-    padding_len = BLOCK_SIZE - len(data) % BLOCK_SIZE
-    return data + bytes([padding_len]) * padding_len
+        Константы:
+            Использует глобальные параметры: KEY_SIZE (длина ключа) и ITERATIONS
+            (количество итераций хеширования)
+        """
+        return PBKDF2(password, salt, dkLen=AES256Encryptor.KEY_SIZE, count=AES256Encryptor.ITERATIONS)
 
+    @staticmethod
+    def _pad(data: bytes) -> bytes:
+        """
+        Добавляет заполнение (padding) к данным для достижения длины, кратной BLOCK_SIZE
 
-def unpad(data: bytes) -> bytes:
-    """Удаляет дополнение PKCS7 из расшифрованных данных.
+        Функция вычисляет необходимую длину заполнения и добавляет её к исходным данным.
+        Значение каждого байта заполнения равно длине самого заполнения.
 
-    Функция удаляет байты дополнения, добавленные при шифровании по схеме PKCS7.
+        Аргументы:
+            data (bytes): Входные данные, к которым нужно добавить заполнение
 
-    Аргументы:
-        data: Байтовая строка с PKCS7 дополнением.
+        Возвращает:
+            bytes: Данные с добавленным заполнением, общая длина которых кратна BLOCK_SIZE
 
-    Возвращает:
-        bytes: Байтовая строка с удаленным дополнением.
-    """
-    return data[: -data[-1]]
+        Константы:
+            Использует глобальную константу BLOCK_SIZE (размер блока в байтах)
 
+        Пример:
+            Если BLOCK_SIZE = 16 и длина data = 14, результат будет data + b'\x02\x02'
+        """
+        padding_len = AES256Encryptor.BLOCK_SIZE - len(data) % AES256Encryptor.BLOCK_SIZE
+        return data + bytes([padding_len]) * padding_len
 
-def encrypt(master_password: str, plaintext: str) -> str:
-    """
-    Шифрует текст с использованием AES в режиме CBC
+    @staticmethod
+    def _unpad(data: bytes) -> bytes:
+        """
+        Удаляет дополнение PKCS7 из расшифрованных данных.
 
-    Выполняет следующие шаги:
-    1. Генерирует случайную соль (salt) и вектор инициализации (IV)
-    2. Получает ключ шифрования из мастер-пароля и соли
-    3. Добавляет заполнение к открытому тексту
-    4. Шифрует данные
-    5. Возвращает зашифрованные данные в base64-кодировке
+        Функция удаляет байты дополнения, добавленные при шифровании по схеме PKCS7.
 
-    Аргументы:
-        master_password (str): Основной пароль для генерации ключа
-        plaintext (str): Текст для шифрования
+        Аргументы:
+            data: Байтовая строка с PKCS7 дополнением.
 
-    Возвращает:
-        str: Base64-кодированная строка, содержащая:
-             [salt][iv][зашифрованный_текст]
+        Возвращает:
+            bytes: Байтовая строка с удаленным дополнением.
+        """
+        return data[: -data[-1]]
 
-    Константы:
-        Использует глобальные параметры: SALT_SIZE (размер соли),
-        BLOCK_SIZE (размер блока AES) и использует ранее определенные функции:
-        derive_key(), pad()
-    """
-    salt = get_random_bytes(SALT_SIZE)
-    key = derive_key(master_password, salt)
-    iv = get_random_bytes(BLOCK_SIZE)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    ciphertext = cipher.encrypt(pad(plaintext.encode()))
-    return base64.b64encode(salt + iv + ciphertext).decode()
+    def encrypt(self, master_password: str, plaintext: str) -> str:
+        """
+        Шифрует текст с использованием AES в режиме CBC
 
+        Выполняет следующие шаги:
+        1. Генерирует случайную соль (salt) и вектор инициализации (IV)
+        2. Получает ключ шифрования из мастер-пароля и соли
+        3. Добавляет заполнение к открытому тексту
+        4. Шифрует данные
+        5. Возвращает зашифрованные данные в base64-кодировке
 
-def decrypt(master_password: str, b64data: str) -> str:
-    """
-    Расшифровывает данные, зашифрованные функцией encrypt
+        Аргументы:
+            master_password (str): Основной пароль для генерации ключа
+            plaintext (str): Текст для шифрования
 
-    Выполняет следующие шаги:
-    1. Декодирует base64-строку в бинарные данные
-    2. Разделяет данные на соль (salt), вектор инициализации (IV) и зашифрованный текст
-    3. Генерирует ключ из мастер-пароля и соли
-    4. Расшифровывает данные
-    5. Удаляет заполнение (padding)
+        Возвращает:
+            str: Base64-кодированная строка, содержащая:
+                [salt][iv][зашифрованный_текст]
 
-    Аргументы:
-        master_password (str): Основной пароль, использованный при шифровании
-        b64data (str): Base64-кодированная строка, содержащая:
-                      [salt][iv][зашифрованный_текст]
+        Константы:
+            Использует глобальные параметры: SALT_SIZE (размер соли),
+            BLOCK_SIZE (размер блока AES) и использует ранее определенные функции:
+            derive_key(), pad()
+        """
+        salt = get_random_bytes(self.SALT_SIZE)
+        key = self._derive_key(master_password, salt)
+        iv = get_random_bytes(self.BLOCK_SIZE)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        ciphertext = cipher.encrypt(self._pad(plaintext.encode()))
+        return base64.b64encode(salt + iv + ciphertext).decode()
 
-    Возвращает:
-        str: Расшифрованный открытый текст
+    def decrypt(self, master_password: str, b64data: str) -> str:
+        """
+        Расшифровывает данные, зашифрованные функцией encrypt
 
-    Константы:
-        Использует глобальные параметры: SALT_SIZE (размер соли),
-        BLOCK_SIZE (размер блока AES) и использует ранее определенные функции:
-        derive_key(), unpad()
+        Выполняет следующие шаги:
+        1. Декодирует base64-строку в бинарные данные
+        2. Разделяет данные на соль (salt), вектор инициализации (IV) и зашифрованный текст
+        3. Генерирует ключ из мастер-пароля и соли
+        4. Расшифровывает данные
+        5. Удаляет заполнение (padding)
 
-    Структура данных:
-        - salt: первые SALT_SIZE байт
-        - iv: следующие BLOCK_SIZE байт после соли
-        - ciphertext: оставшиеся байты
-    """
-    raw = base64.b64decode(b64data)
-    salt, iv, ciphertext = raw[:SALT_SIZE], raw[SALT_SIZE : SALT_SIZE + BLOCK_SIZE], raw[SALT_SIZE + BLOCK_SIZE :]
-    key = derive_key(master_password, salt)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    return unpad(cipher.decrypt(ciphertext)).decode()
+        Аргументы:
+            master_password (str): Основной пароль, использованный при шифровании
+            b64data (str): Base64-кодированная строка, содержащая:
+                        [salt][iv][зашифрованный_текст]
+
+        Возвращает:
+            str: Расшифрованный открытый текст
+
+        Константы:
+            Использует глобальные параметры: SALT_SIZE (размер соли),
+            BLOCK_SIZE (размер блока AES) и использует ранее определенные функции:
+            derive_key(), unpad()
+
+        Структура данных:
+            - salt: первые SALT_SIZE байт
+            - iv: следующие BLOCK_SIZE байт после соли
+            - ciphertext: оставшиеся байты
+        """
+        raw = base64.b64decode(b64data)
+        salt = raw[: self.SALT_SIZE]
+        iv = raw[self.SALT_SIZE : self.SALT_SIZE + self.BLOCK_SIZE]
+        ciphertext = raw[self.SALT_SIZE + self.BLOCK_SIZE :]
+
+        key = self._derive_key(master_password, salt)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        return self._unpad(cipher.decrypt(ciphertext)).decode()
 
 
 def main():
+    """Основная функция для работы класса."""
+    encryptor = AES256Encryptor()
     mode = input("Выберите режим (e — encrypt, d — decrypt): ").strip().lower()
     master_key = getpass.getpass("Введите мастер-ключ: ").strip()
 
     if mode == "e":
         plaintext = input("Введите строку для шифрования: ").strip()
-        encrypted = encrypt(master_key, plaintext)
+        encrypted = encryptor.encrypt(master_key, plaintext)
         print(f"Зашифровано:\n{encrypted}")
     elif mode == "d":
         b64data = input("Введите строку для расшифровки: ").strip()
         try:
-            decrypted = decrypt(master_key, b64data)
+            decrypted = encryptor.decrypt(master_key, b64data)
             print(f"Расшифровано:\n{decrypted}")
         except Exception as e:
             print("Ошибка при расшифровке:", str(e))
