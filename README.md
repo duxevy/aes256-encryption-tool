@@ -13,7 +13,7 @@
 
 ## Требования
 
-- Python 3.6+
+- Python 3.8+
 - pycryptodome
 
 ## Установка
@@ -23,6 +23,7 @@
 
 ```bash
 pip install pycryptodome
+poetry add pycryptodome
 ```
 
 ## Использование
