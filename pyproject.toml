@@ -15,6 +15,11 @@ pycryptodome = "^3.23.0"
 pytest = "^8.4.1"
 pytest-cov = "^6.2.1"
 
+[tool.mypy]
+files = "src"
+warn_return_any = true
+warn_unused_configs = true
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
